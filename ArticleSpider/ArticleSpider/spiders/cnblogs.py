@@ -25,7 +25,10 @@ class CnblogsSpider(scrapy.Spider):
             # href = node.xpath('h2[@class="news_entry"]/a/@href').extract()
             post_url = node.xpath('h2/a/@href').extract_first("")
             image_a = node.xpath('div[@class="entry_summary"]/a')
-            image_url = [image_a.xpath('img/@src').extract_first("")]
+            image_url = image_a.xpath('img/@src').extract_first("")
+            if image_url != '':
+                image_url = parse.urljoin(response.url, image_url)
+            image_url = [image_url]
             yield Request(url=parse.urljoin(response.url, post_url), meta={"front_image_url":image_url}, callback=self.parse_detail)
 
         # 提取下一页并交给scrapy进行下载
