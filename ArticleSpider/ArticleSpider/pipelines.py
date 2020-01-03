@@ -60,7 +60,7 @@ class MysqlPipeline(object):
     def process_item(self, item, spider):
         insert_sql = """
             insert into cnblog_article(title, url, url_object_id, front_image_url, front_image_path, CommentCount, TotalView, DiggCount, BuryCount, create_time, tags, content)
-            values(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            values(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE TotalView=values(TotalView), DiggCount=values(DiggCount), CommentCount=values(CommentCount)
         """
         params = list()
         params.append(item.get("title", ""))
