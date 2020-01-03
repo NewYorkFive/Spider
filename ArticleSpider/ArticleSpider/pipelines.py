@@ -6,6 +6,7 @@
 # See: https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 from scrapy.pipelines.images import ImagesPipeline
 from scrapy.exporters import JsonItemExporter
+import MySQLdb
 
 import codecs
 import json
@@ -45,7 +46,37 @@ class JsonExporterPipeline(object):
 class ArticlespiderImagePipeline(ImagesPipeline):
     def item_completed(self, results, item, info):
         if "front_image_url" in item:
+            front_image_path = ""
             for ok, value in results:
                 front_image_path = value["path"]
             item["front_image_path"] = front_image_path
+        return item
+
+class MysqlPipeline(object):
+    def __init__(self):
+        self.connection = MySQLdb.connect("127.0.0.1", "root", "mysql123", "article_spider", charset="utf8", use_unicode=True)
+        self.cursor = self.connection.cursor()
+
+    def process_item(self, item, spider):
+        insert_sql = """
+            insert into cnblog_article(title, url, url_object_id, front_image_url, front_image_path, CommentCount, TotalView, DiggCount, BuryCount, create_time, tags, content)
+            values(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        params = list()
+        params.append(item.get("title", ""))
+        params.append(item.get("url", ""))
+        params.append(item.get("url_object_id",""))
+        front_image_url = item.get("front_image_url", [])
+        front_image_url = ",".join(front_image_url)
+        params.append(front_image_url)
+        params.append(item.get("front_image_path", ""))
+        params.append(item.get("CommentCount", 0))
+        params.append(item.get("TotalView", 0))
+        params.append(item.get("DiggCount", 0))
+        params.append(item.get("BuryCount", 0))
+        params.append(item.get("create_time", "1970-07-01"))
+        params.append(item.get("tags", ""))
+        params.append(item.get("content", ""))
+        self.cursor.execute(insert_sql, tuple(params))
+        self.connection.commit()
         return item
