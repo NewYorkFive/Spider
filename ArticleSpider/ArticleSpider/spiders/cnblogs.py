@@ -29,6 +29,8 @@ class CnblogsSpider(scrapy.Spider):
             if image_url != '':
                 image_url = parse.urljoin(response.url, image_url)
             image_url = [image_url]
+            else:
+                image_url = []
             yield Request(url=parse.urljoin(response.url, post_url), meta={"front_image_url":image_url}, callback=self.parse_detail)
 
         # 提取下一页并交给scrapy进行下载
