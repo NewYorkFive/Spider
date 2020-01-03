@@ -70,7 +70,7 @@ ITEM_PIPELINES = {
     'ArticleSpider.pipelines.ArticlespiderImagePipeline': 1,
     'ArticleSpider.pipelines.JsonWithEncodingPipeline': 2,
     'ArticleSpider.pipelines.JsonExporterPipeline': 3,
-    'ArticleSpider.pipelines.MysqlPipeline': 4,
+    'ArticleSpider.pipelines.MysqlTwistedPipeline': 4,
     'ArticleSpider.pipelines.ArticlespiderPipeline': 300,
     # 'scrapy.pipelines.images.ImagesPipeline': 1,
 }
@@ -102,3 +102,9 @@ IMAGES_STORE = os.path.join(project_dir, "images")
 print(IMAGES_STORE)
 
 IMAGES_URLS_FIELD = 'front_image_url'
+
+
+MYSQL_HOST = "127.0.0.1"
+MYSQL_DBNAME = "article_spider"
+MYSQL_USER = "root"
+MYSQL_PASSWORD = "mysql123"

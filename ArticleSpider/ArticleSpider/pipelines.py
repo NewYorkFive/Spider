@@ -6,7 +6,9 @@
 # See: https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 from scrapy.pipelines.images import ImagesPipeline
 from scrapy.exporters import JsonItemExporter
+from twisted.enterprise import adbapi
 import MySQLdb
+from MySQLdb.cursors import DictCursor
 
 import codecs
 import json
@@ -41,7 +43,6 @@ class JsonExporterPipeline(object):
     def spider_closed(self, spider):
         self.exporter.finish_exporting()
         self.file.close()
-
 
 class ArticlespiderImagePipeline(ImagesPipeline):
     def item_completed(self, results, item, info):
@@ -80,3 +81,52 @@ class MysqlPipeline(object):
         self.cursor.execute(insert_sql, tuple(params))
         self.connection.commit()
         return item
+
+
+class MysqlTwistedPipeline(object):
+    def __init__(self, dbpool):
+        self.dbpool = dbpool
+
+    @classmethod
+    def from_settings(cls, settings):
+        dbparms = dict(
+            host=settings["MYSQL_HOST"],
+            db=settings["MYSQL_DBNAME"],
+            user=settings["MYSQL_USER"],
+            passwd=settings["MYSQL_PASSWORD"],
+            charset='utf8',
+            cursorclass=DictCursor,
+            use_unicode=True,
+        )
+        dbpool = adbapi.ConnectionPool("MySQLdb", **dbparms)
+        return cls(dbpool)
+
+    def process_item(self, item, spider):
+        query = self.dbpool.runInteraction(self.do_insert, item)
+        query.addErrback(self.handle_error, item, spider)
+        return item
+
+    def handle_error(self, failure, item, spider):
+        print(failure)
+
+    def do_insert(self, cursor, item):
+        insert_sql = """
+            insert into cnblog_article(title, url, url_object_id, front_image_url, front_image_path, CommentCount, TotalView, DiggCount, BuryCount, create_time, tags, content)
+            values(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE TotalView=values(TotalView), DiggCount=values(DiggCount), CommentCount=values(CommentCount)
+        """
+        params = list()
+        params.append(item.get("title", ""))
+        params.append(item.get("url", ""))
+        params.append(item.get("url_object_id",""))
+        front_image_url = item.get("front_image_url", [])
+        front_image_url = ",".join(front_image_url)
+        params.append(front_image_url)
+        params.append(item.get("front_image_path", ""))
+        params.append(item.get("CommentCount", 0))
+        params.append(item.get("TotalView", 0))
+        params.append(item.get("DiggCount", 0))
+        params.append(item.get("BuryCount", 0))
+        params.append(item.get("create_time", "1970-07-01"))
+        params.append(item.get("tags", ""))
+        params.append(item.get("content", ""))
+        cursor.execute(insert_sql, tuple(params))
